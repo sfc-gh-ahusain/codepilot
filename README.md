@@ -70,6 +70,10 @@ CODEPILOT offers an intuitive query interface that supports iterative and conver
 2. **Ask Questions**: Use the interactive query interface to explore the indexed content.
 3. **Iterate and Refine**: Leverage conversational capabilities to refine queries and improve search outcomes.
 
+```
+python codepilot.py <git_repo_folder> <git_repo_url> <path_to_config.ini>
+```
+
 ---
 
 ## Contributions
