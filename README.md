@@ -1,6 +1,8 @@
 # CODEPILOT: Contextual Code & Document Exploration Tool
 
-CODEPILOT is a powerful semantic search and document analysis tool designed to streamline the exploration of codebases and textual repositories. By leveraging state-of-the-art machine learning models and FAISS as a vector database, CODEPILOT enables users to perform context-aware searches, gain actionable insights, and answer complex queries directly from documents.
+CODEPILOT is a powerful semantic search and document analysis tool designed to streamline the exploration of codebases and textual repositories. By leveraging state-of-the-art machine learning models and FAISS as a vector database, CODEPILOT enables users to perform context-aware searches, gain actionable insights, and answer complex queries directly from documents. 
+
+CODEPILOT follow per-query billing model; it generates estimated cost of running query before processing any query, enables user to choose if they are willing to proceed. 
 
 ---
 
