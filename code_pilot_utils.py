@@ -119,43 +119,6 @@ def read_file_with_encoding(config, file_path):
     return content
 
 
-def read_file_streaming_with_encoding_and_chunking(config, file_path, embedding_model, max_tokens=MAX_TOKEN_LENGTH):
-    """Streams the file, accumulates text, and chunks it when exceeding max_tokens."""
-    
-    try:
-        # First, detect the encoding by reading a small portion of the file
-        with open(file_path, 'rb') as file:
-            raw_data = file.read(10000)  # Read first 10,000 bytes to detect encoding
-            result = chardet.detect(raw_data)
-            encoding = result['encoding']
-            config.logger.debug(f"File {file_path} detected encoding: {encoding}")
-        
-        # Initialize an empty string to accumulate text and a list for chunks
-        text = ""
-        chunks = []
-        
-        # Open the file for streaming reading with detected encoding
-        with open(file_path, 'r', encoding=encoding, errors='replace') as file:
-            for line in file:
-                text += line  # Accumulate text from the current line
-                if len(text) > max_tokens:  # If accumulated text exceeds max tokens
-                    new_chunks = split_into_chunks(config, text, embedding_model, file_path)
-                    chunks.extend(new_chunks)
-                    text = ""  # Reset text buffer
-
-            # Process any remaining text that didn't exceed max_tokens
-            if text:
-                new_chunks = split_into_chunks(config, text, embedding_model, file_path)
-                chunks.extend(new_chunks)
-
-        config.logger.info(f"Processed {len(chunks)} chunks from file {file_path}")
-        return chunks
-
-    except Exception as e:
-        config.logger.error(f"Error processing file {file_path}: {e}")
-        return []
-
-
 def split_into_chunks(config, text, embedding_model, file_path, max_tokens=MAX_TOKEN_LENGTH, overlap=50):
     # Tokenize and split text into chunks within max token limit, with overlap
     tokens = embedding_model.tokenizer.encode(text, truncation=True)
@@ -173,19 +136,6 @@ def split_into_chunks(config, text, embedding_model, file_path, max_tokens=MAX_T
 
     return chunks
 
-""""
-    # Tokenize and split text into chunks within max token limit
-    tokens = embedding_model.tokenizer.encode(text, max_length=max_tokens, truncation=True)
-    chunks = []
-    for i in range(0, len(tokens), max_tokens):
-        chunk = tokens[i:i + max_tokens]
-        chunk_text = embedding_model.tokenizer.decode(chunk, skip_special_tokens=True)
-        chunks.append(chunk_text)
-
-    config.logger.info(f"Split into chunks {file_path} count {len(chunks)}")
-
-    return chunks
-"""
 
 def chunk_file(config, file_path, embedding_model):
     try:
@@ -205,62 +155,6 @@ def chunk_file(config, file_path, embedding_model):
     assert all(len(chunk) > 0 for chunk in chunks), "One or more chunks are empty."
 
     return chunks
-
-def generate_embeddings_in_batches(config, chunks, embedding_model, batch_size=10):
-    chunk_data = []
-
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i:i+batch_size]
-        try:
-            # Create embeddings for the current batch of chunks
-            batch_embeddings = faiss_utils.embed_text_batch(embedding_model, batch)
-
-            for j, chunk in enumerate(batch):
-                embedding = batch_embeddings[j]
-                # Validate embedding dimension
-                assert len(embedding) == config.dimension_dict[config.transformer], \
-                    f"Embedding dimension mismatch for chunk {i + j}"
-                
-                chunk_data.append({"text": chunk, "embedding": embedding})
-                config.logger.debug(f"Batch processed: Embedding for chunk {i + j} generated.")
-        except Exception as e:
-            config.logger.error(f"Embedding failed for batch {i // batch_size} in file: {e}")
-            break  # Continue with the next batch if current batch fails
-
-    return chunk_data
-
-""""
-def process_files_for_chunking(config, files_to_index):
-    config.logger.info(f"Files to index {len(files_to_index)}")
-    file_chunks = {}
-    total_chunks = 0
-    for file in files_to_index:
-        # chunks = chunk_file(config, file, config.embedding_model)
-        chunks = read_file_streaming_with_encoding_and_chunking(config, file, config.embedding_model)
-
-        if not chunks:
-            config.logger.error(f"No chunks created for file: {file}")
-            continue
-
-        # Process embeddings for the chunks in batches
-        chunk_data = generate_embeddings_in_batches(config, chunks, config.embedding_model)
-
-        # Ensure embeddings were created
-        if len(chunk_data) != len(chunks):
-            config.logger.error(f"Mismatch between chunks and embeddings for file: {file}")
-            continue
-
-        file_chunks[file] = chunk_data
-        total_chunks += len(chunk_data)
-        config.logger.info(f"Processed file {file} with {len(chunk_data)} chunks")
-
-        # Clear intermediate variables to optimize memory
-        del chunks
-        del chunk_data
-
-    config.logger.info(f"Total files processed: {len(files_to_index)}; Total chunks: {total_chunks}")
-    return file_chunks
-"""
 
 
 def process_files_for_chunking(config, files_to_index):
@@ -351,23 +245,3 @@ def construct_prompt(insights, user_query, entities, keywords):
     )    
 
     return input_prompt
-
-    """"
-
-    # Construct the input prompt
-    if insights:
-        context = "\n\n".join(insights) if insights else ""
-        input_prompt = (
-            f"Based on the following insights and the user's intent:\n"
-            f"Keywords: {', '.join(keywords)}\n"
-            f"Entities: {', '.join([entity['word'] for entity in entities])}\n"
-            f"{context}\n\n"
-            f"Answer the question: {user_query}\n\n"
-            f"Please provide a concise, clear, and focused explanation without including numerical sequences, unnecessary symbols like '*', '~', or technical jargon. "
-            # f"Do not include any raw code, such as variable names, method signatures, or other technical details. "
-            # f"Focus on describing the purpose and functionality of the class or method in simple terms."            
-        )
-        return input_prompt
-
-    return None
-    """
